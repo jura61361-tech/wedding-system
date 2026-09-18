@@ -279,20 +279,48 @@ export const WeddingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       const supabase = createClient();
       if (supabase && isLiveSupabase && isOnline) {
+        let createdGift: WeddingGift | null = null;
+
+        // Try inserting with select return
         const { data, error } = await supabase
           .from('wedding_gifts')
           .insert([newGiftPayload])
           .select()
-          .single();
+          .maybeSingle();
 
         if (error) {
-          throw error;
+          // If select was restricted by RLS, perform insert-only
+          const { error: insertOnlyError } = await supabase
+            .from('wedding_gifts')
+            .insert([newGiftPayload]);
+
+          if (insertOnlyError) {
+            throw insertOnlyError;
+          }
+
+          createdGift = {
+            id: `gift_${Date.now()}`,
+            guest_name: newGiftPayload.guest_name,
+            guest_phone: newGiftPayload.guest_phone,
+            side: newGiftPayload.side || 'both',
+            amount: newGiftPayload.amount,
+            currency: newGiftPayload.currency || 'USD',
+            payment_method: newGiftPayload.payment_method || 'Cash',
+            receipt_url: newGiftPayload.receipt_url,
+            wishes: newGiftPayload.wishes,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+        } else if (data) {
+          createdGift = data as WeddingGift;
         }
 
-        const createdGift = data as WeddingGift;
-        setGifts((prev) => [createdGift, ...prev]);
-        saveAllGiftsLocally([createdGift, ...gifts]);
-        return { success: true, gift: createdGift };
+        if (createdGift) {
+          setGifts((prev) => [createdGift!, ...prev]);
+          saveAllGiftsLocally([createdGift!, ...gifts]);
+          return { success: true, gift: createdGift };
+        }
       }
 
       // Offline / Demo fallback
