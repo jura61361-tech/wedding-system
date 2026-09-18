@@ -75,6 +75,12 @@ CREATE POLICY "Host view approved gifts"
 ON wedding_gifts FOR SELECT TO authenticated
 USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'host'));
 
+-- 6b. Allow Public/Anon to view approved gifts (for wedding reception live screens & tickers)
+DROP POLICY IF EXISTS "Public view approved gifts" ON wedding_gifts;
+CREATE POLICY "Public view approved gifts"
+ON wedding_gifts FOR SELECT TO anon, authenticated
+USING (status = 'approved');
+
 -- 7. Realtime Publication for Live Dashboard
 DO $$ BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE wedding_gifts;
