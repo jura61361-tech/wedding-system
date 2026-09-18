@@ -22,8 +22,11 @@ export function createClient(): SupabaseClient | null {
 
   if (client) return client;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  let url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  // Sanitize if user pasted the /rest/v1/ endpoint URL
+  url = url.replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
 
   client = createBrowserClient(url, key);
   return client;
